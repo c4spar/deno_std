@@ -68,6 +68,7 @@ interface Flags {
   bools: Record<string, boolean>;
   strings: Record<string, boolean>;
   collect: Record<string, boolean>;
+  negate: Record<string, boolean>;
   unknownFn: (arg: string, key?: string, value?: unknown) => unknown;
   allBools: boolean;
 }
@@ -144,6 +145,7 @@ export function parse(
     unknownFn: unknown,
     allBools: false,
     collect: {},
+    negate: {},
   };
 
   if (boolean !== undefined) {
@@ -152,7 +154,11 @@ export function parse(
     } else {
       const booleanArgs = typeof boolean === "string" ? [boolean] : boolean;
 
-      for (const key of booleanArgs.filter(Boolean)) {
+      for (let key of booleanArgs.filter(Boolean)) {
+        if (key.startsWith("no-")) {
+          key = key.replace(/no-/, "");
+          flags.negate[key] = true;
+        }
         flags.bools[key] = true;
       }
     }
@@ -176,7 +182,11 @@ export function parse(
   if (string !== undefined) {
     const stringArgs = typeof string === "string" ? [string] : string;
 
-    for (const key of stringArgs.filter(Boolean)) {
+    for (let key of stringArgs.filter(Boolean)) {
+      if (key.startsWith("no-")) {
+        key = key.replace(/no-/, "");
+        flags.negate[key] = true;
+      }
       flags.strings[key] = true;
       const alias = get(aliases, key);
       if (alias) {
@@ -290,7 +300,9 @@ export function parse(
       } else {
         setArg(key, value, arg);
       }
-    } else if (/^--no-.+/.test(arg)) {
+    } else if (
+      /^--no-.+/.test(arg) && flags.negate[arg.replace(/^--no-/, "")]
+    ) {
       const m = arg.match(/^--no-(.+)/);
       assert(m != null);
       setArg(m[1], false, arg, false);
